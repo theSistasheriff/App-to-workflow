@@ -3,79 +3,92 @@ import fs from 'fs'
 import http from 'http'
 import { Octokit, App } from 'octokit'
 import { createNodeMiddleware } from '@octokit/webhooks'
+import { createAppAuth } from '@octokit/auth-app'
 
+// Load environment variables from .env file
 dotenv.config()
 
-//const fs = require('fs')
+const appId = process.env.APP_ID
+const privateKeyPath = process.env.PRIVATE_KEY_PATH
+const privateKey = fs.readFileSync(privateKeyPath, 'utf8')
+const secret = process.env.WEBHOOK_SECRET
 
-//const express = require('express')
-//const { createAppAuth } = require('@octokit/auth-app')
-//const { Octokit } = require('@octokit/rest')
-//const bodyParser = require('body-parser')
+const wf_repo = process.env.CENTRAL_REPO
+const repo_owner = process.env.CENTRAL_REPO_OWNER
+const wf_name = process.env.WORKFLOW_NAME
 
-const {
-    APP_ID,
-    PRIVATE_KEY_PATH,
-    WEBHOOK_SECRET,
-    CENTRAL_REPO,
-    CENTRAL_REPO_OWNER,
-} = process.env;
+// Extra for live usage
+const enterpriseHostname = process.env.ENTERPRISE_HOSTNAME
 
-//const app = express()
+// Create an authenticated Octokit client authenticated as a GitHub App
 const app = new App({
-    appId: APP_ID,
-    privateKey: fs.readFileSync(PRIVATE_KEY_PATH, 'utf8'),
+    appId,
+    privateKey,
     webhooks: {
-        secret: WEBHOOK_SECRET
-    }
+      secret
+    },
+    // Optional: Add the base URL for Enterprise in .env for live usage, or need 
+    ...(enterpriseHostname && {
+    Octokit: Octokit.defaults({
+      baseUrl: `https://${enterpriseHostname}/api/v3`
+    })
+  })
 })
 
-//app.use(bodyParser.json())
-
+// Optional: Get & log the authenticated app's name
 const { data } = await app.octokit.request('/app')
-
 app.octokit.log.debug(`Authenticated as ${data.name}`)
 
-app.webhooks.on(['pull_request.opened', 'pull_request.synchronize', 'pull_request.reopened'], async (req, res) => {
-    const event = req.headers['x-github-event']
-    const payload = req.body
+app.webhooks.on('pull_request.opened', async ({ octokit, payload }) => {
+
+    console.log(`A pull request event for #${payload.pull_request.number}`)
+
+    const installationId = payload.installation.id
+    const sourceRepo = payload.pull_request.head.repo.full_name
+    const branch = payload.pull_request.head.ref
+    const prNumber = payload.pull_request.number
 
     
-        const installationId = payload.installation.id
-        const sourceRepo = payload.pull_request.head.repo.full_name
-        const branch = payload.pull_request.head.ref
-        const prNumber = payload.pull_request.number
+    console.log(`Installation ID: ${installationId}`)
+    console.log(`Source Repository: ${sourceRepo}`)
+    console.log(`Branch: ${branch}`)
+    console.log(`Pull Request Number: ${prNumber}`)
+    console.log(`Workflow Name: ${wf_name}`)
+    console.log(`Central Workflow Repository: ${repo_owner}`)
+    console.log(`Workflow repo: ${wf_repo}`)
 
-        const auth = createAppAuth({
-            appId: APP_ID,
-            privateKey: PRIVATE_KEY,
-            installationId,
-        });
+    const auth = createAppAuth({
+        appId,
+        privateKey,
+        installationId,
+    });
+    const installationAuth = await auth({ type: 'installation' })
 
-        const installationAuth = await auth({ type: 'installation' })
-        const octokit =new Octokit({ auth: installationAuth.token })
+    console.log(`Installation Auth Token: ${installationAuth.token}`)
 
-        try{
-            await octokit.rest.createDispatchEvent({
-                owner: CENTRAL_REPO_OWNER,
-                repo: CENTRAL_REPO,
-                event_type: 'run-lint',
-                client_payload: {
-                    source_repo: sourceRepo,
-                branch: branch,
-                pr_number: prNumber,
-                installation_id: installationId,
-                },
-            })
-        } catch (error) {
-            if (error.response) {
-                console.error(`Error! Status: ${error.response.status}. Message: ${error.response.data.message}`)
-            } else {
-                console.error(`Error message: ${error}`)
-            }
+
+    try{
+        //await octokit.rest.actions.createDispatchEvent({
+        await octokit.rest.actions.createWorkflowDispatch({  
+            owner: repo_owner,
+            repo: wf_repo,
+            workflow_id: wf_name,
+            ref: branch,
+           // client_payload: {
+           //     source_repo: sourceRepo,
+           //     branch: branch,
+           //     pr_number: prNumber,
+           //     installation_id: installationId,
+           // },
+        })
+    } catch (error) {
+        if (error.response) {
+            console.error(`Error! Status: ${error.response.status}. Message: ${error.response.data.message}`)
+        } else {
+            console.error(`Error message: ${error}`)
         }
+    }
 
-   
 })
 
 // Optional: Handle errors
