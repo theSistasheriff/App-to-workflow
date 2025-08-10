@@ -47,3 +47,15 @@ The WF is supposed to run FossId (Flake8 as test), and feed back the result as a
 
 ## Further steps
 The enterprise trail is up. So a new account needs to be created on github to test on.
+
+
+## Current support links
+https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app
+
+https://docs.github.com/en/rest/codespaces/codespaces?apiVersion=2022-11-28
+
+https://octokit.github.io/rest.js/v22/#apps (We should use either "createDispatchEvent" or "createWorkflowDispatch")
+
+https://docs.github.com/en/apps/creating-github-apps/registering-a-github-app/using-webhooks-with-github-apps
+
+https://github.com/octokit/octokit.js?tab=readme-ov-file
