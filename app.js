@@ -48,7 +48,7 @@ app.webhooks.on('pull_request.opened', async ({ octokit, payload }) => {
     const branch = payload.pull_request.head.ref
     const prNumber = payload.pull_request.number
 
-    
+    //This is a debugging log to see the values
     console.log(`Installation ID: ${installationId}`)
     console.log(`Source Repository: ${sourceRepo}`)
     console.log(`Branch: ${branch}`)
@@ -57,35 +57,38 @@ app.webhooks.on('pull_request.opened', async ({ octokit, payload }) => {
     console.log(`Central Workflow Repository: ${repo_owner}`)
     console.log(`Workflow repo: ${wf_repo}`)
 
+    // Create an authenticated Octokit client for the installation
     const auth = createAppAuth({
         appId,
         privateKey,
         installationId,
     });
     const installationAuth = await auth({ type: 'installation' })
+    const centralOctokit = new Octokit({ auth: installationAuth.token })
 
     console.log(`Installation Auth Token: ${installationAuth.token}`)
 
-
-    try{
-        //await octokit.rest.actions.createDispatchEvent({
-        await octokit.rest.actions.createWorkflowDispatch({  
+    // Trigger the workflow dispatch event of Flake1.yml.
+    // Send information of the source repository, branch, and pull request number
+    try {
+        await octokit.rest.actions.createWorkflowDispatch({
             owner: repo_owner,
             repo: wf_repo,
             workflow_id: wf_name,
-            ref: branch,
-           // client_payload: {
-           //     source_repo: sourceRepo,
-           //     branch: branch,
-           //     pr_number: prNumber,
-           //     installation_id: installationId,
-           // },
-        })
+            ref: 'main',
+            inputs: {
+                source_repo: sourceRepo,
+                branch: branch,
+                pr_number: prNumber,
+                installation_id: installationId,
+            },
+        });
+        console.log(`✅ Workflow dispatched for ${sourceRepo} on branch ${branch}`);
     } catch (error) {
         if (error.response) {
-            console.error(`Error! Status: ${error.response.status}. Message: ${error.response.data.message}`)
+            console.error(`❌ Error! Status: ${error.response.status}. Message: ${error.response.data.message}`);
         } else {
-            console.error(`Error message: ${error}`)
+            console.error(`❌ Error message: ${error}`);
         }
     }
 
