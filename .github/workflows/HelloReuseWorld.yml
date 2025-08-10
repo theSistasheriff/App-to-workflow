@@ -1,0 +1,20 @@
+name: HelloReuseWorld
+
+on: 
+  workflow_dispatch:  #Must for workflow to be reusable
+  repository_dispatch:
+    types: [run-hello-world]  # Custom event type to trigger this workflow
+
+jobs:
+  reusable_workflow_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: RUN_HELLO_WORLD
+        run: |
+          docker run --rm hello-world

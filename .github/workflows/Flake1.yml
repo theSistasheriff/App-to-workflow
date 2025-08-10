@@ -1,0 +1,53 @@
+
+name: Run Linter
+
+on:
+workflow_dispatch:
+  inputs:
+    repo:
+      description: 'Source repository for the PR'
+      required: true
+      default: 'theSistasheriff/prodTest'
+    branch:
+      description: 'Branch to check'
+      required: true
+      default: 'main'
+    pr_number:
+      description: 'Pull request number'
+      required: true
+      default: '1'
+  repository_dispatch:
+    types: [run-lint]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source PR repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.client_payload.repo }}
+          ref: ${{ github.event.client_payload.branch }}
+          token: ${{ secrets.APP_INSTALLATION_TOKEN }}
+
+      - name: Set up Python
+        uses: action/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies and run flake8
+        run: |
+          pip install flake8
+          flake8 .
+      
+      - name: Post results to PR
+        env:
+          GH_TOKEN: ${{ secrets.APP_INSTALLATION_TOKEN }}
+        run: |
+          echo "### flake8 completed" > result.txt
+          echo "\`flake8\` ran on code in PR #${{ github.event.client_payload.pr_number }}" >> result.txt
+
+          gh pr comment ${{ github.event.client_payload.pr_number }} \
+            --repo ${{ github.event.client_payload.source_repo }} \
+            --body-file result.txt
