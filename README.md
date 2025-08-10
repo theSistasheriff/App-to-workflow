@@ -25,3 +25,7 @@ npm install
 ### Important library
 - Octokit (could also use "expressjs")
     - https://github.com/octokit/octokit.js
+
+
+### Octokit
+https://octokit.github.io/rest.js/v22/#apps
