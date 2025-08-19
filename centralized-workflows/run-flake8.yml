@@ -1,0 +1,54 @@
+name: Run flake8
+
+on:
+  workflow_call:
+    inputs:
+      repo:
+        description: 'Source repository for the PR'
+        required: true
+        type: string
+      branch:
+        description: 'Branch to check'
+        required: true
+        type: string
+      pr_number:
+        description: 'Pull request number'
+        required: true
+        type: string
+    secrets:
+      APP_INSTALLATION_TOKEN:
+        description: 'Token for checking out and commenting'
+        required: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source PR repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repo }}
+          ref: ${{ inputs.branch }}
+          token: ${{ secrets.APP_INSTALLATION_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies and run flake8
+        run: |
+          pip install flake8
+          flake8 . || true
+
+      - name: Post results to PR
+        env:
+          GH_TOKEN: ${{ secrets.APP_INSTALLATION_TOKEN }}
+        run: |
+          echo "### flake8 results for PR #${{ inputs.pr_number }}" > result.txt
+          flake8 . 2>&1 >> result.txt || true
+
+          gh pr comment ${{ inputs.pr_number }} \
+            --repo ${{ inputs.repo }} \
+            --body-file result.txt

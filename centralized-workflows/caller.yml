@@ -1,0 +1,24 @@
+name: Call Linter Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        required: true
+        type: string
+      branch:
+        required: true
+        type: string
+      pr_number:
+        required: true
+        type: string
+
+jobs:
+  call-linter:
+    uses: Giteon-team/central-workflows/.github/workflows/run-flake8.yml@main
+    with:
+      repo: ${{ inputs.repo }}
+      branch: ${{ inputs.branch }}
+      pr_number: ${{ inputs.pr_number }}
+    secrets:
+      APP_INSTALLATION_TOKEN: ${{ secrets.APP_INSTALLATION_TOKEN }}
